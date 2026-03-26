@@ -14,15 +14,18 @@ import {
 
 export default function RoomScreen() {
   const router = useRouter();
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [newRoomName, setNewRoomName] = useState("");
+
+  const [rooms, setRooms] = useState<any[]>([]); // State เก็บข้อมูลห้องทั้งหมด
+  const [newRoomName, setNewRoomName] = useState(""); // State เก็บชื่อห้องใหม่ที่จะสร้าง
+  // State สำหรับฟีเจอร์กรอกรหัสเข้าห้อง
+  const [joinCode, setJoinCode] = useState("");
 
   // โหลดรายชื่อห้องทันทีที่เปิดหน้านี้
   useEffect(() => {
     fetchRooms();
   }, []);
 
-  // ฟังก์ชันดึงข้อมูลห้องที่ผู้ใช้เป็นสมาชิกอยู่
+  // ฟังก์ชันดึงข้อมูลห้องจากฐานข้อมูล
   const fetchRooms = async () => {
     const { data, error } = await supabase.from("family_rooms").select("*");
     if (!error && data) setRooms(data);
@@ -30,18 +33,18 @@ export default function RoomScreen() {
 
   // ฟังก์ชันสร้างห้องใหม่
   const handleCreateRoom = async () => {
-    if (!newRoomName) return;
+    if (!newRoomName) return; // ถ้าไม่ได้กรอกชื่อให้หยุดการทำงาน
+    
+    // ดึงข้อมูลผู้ใช้งานปัจจุบัน
     const {
       data: { user },
     } = await supabase.auth.getUser();
-  
-    if (!user) return;
-
     if (!user) return;
 
     // สร้างรหัสห้องแบบสุ่ม 6 ตัวอักษร
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+    // บันทึกห้องใหม่ลงฐานข้อมูล
     const { error } = await supabase
       .from("family_rooms")
       .insert([
@@ -50,15 +53,48 @@ export default function RoomScreen() {
 
     if (error) Alert.alert("Error", error.message);
     else {
-      setNewRoomName("");
-      fetchRooms();
-    } // ล้างค่าช่องกรอกและโหลดข้อมูลใหม่
+      setNewRoomName(""); // ล้างช่องกรอกข้อความ
+      fetchRooms(); // ดึงข้อมูลห้องมาใหม่
+    }
+  };
+
+  // ฟังก์ชันเข้าร่วมห้อง
+  const handleJoinRoom = async () => {
+    if (!joinCode) return; // ถ้าไม่ได้ระบุรหัสให้หยุดการทำงาน
+    
+    // ดึงข้อมูลผู้ใช้งานปัจจุบัน
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // ค้นหาห้องจากรหัสที่กรอก
+    const { data: roomData, error: roomError } = await supabase
+      .from("family_rooms")
+      .select("id")
+      .eq("room_code", joinCode)
+      .single();
+
+    if (roomError || !roomData)
+      return Alert.alert("ไม่พบห้อง", "รหัสห้องไม่ถูกต้อง");
+
+    // นำชื่อผู้ใช้เข้าไปเป็นสมาชิกของห้อง
+    const { error } = await supabase
+      .from("room_members")
+      .insert([{ room_id: roomData.id, user_id: user.id, role: "member" }]);
+
+    if (error) Alert.alert("Error", error.message);
+    else {
+      setJoinCode(""); // ล้างช่องกรอกข้อความ
+      fetchRooms(); // ดึงข้อมูลใหม่
+      Alert.alert("สำเร็จ", "เข้าร่วมครอบครัวแล้ว!");
+    }
   };
 
   // ฟังก์ชันออกจากระบบ
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.replace("/login"); // กลับไปหน้าล็อกอิน
+    router.replace("/login"); // เมื่อกดออกระบบให้เปลี่ยนไปหน้า login
   };
 
   return (
@@ -74,20 +110,40 @@ export default function RoomScreen() {
         <Button title="สร้างห้องครอบครัว" onPress={handleCreateRoom} />
       </View>
 
+      {/* UI สำหรับกรอกรหัสเข้าร่วมห้อง */}
+      <View style={styles.actionBox}>
+        <TextInput
+          style={styles.input}
+          placeholder="รหัสเข้าห้อง..."
+          value={joinCode}
+          onChangeText={setJoinCode}
+        />
+        <Button
+          title="เข้าร่วมห้องด้วยรหัส"
+          onPress={handleJoinRoom}
+          color="orange"
+        />
+      </View>
+
       <Text style={styles.subtitle}>ห้องของคุณ:</Text>
 
-      {/* ลิสต์แสดงห้องที่มีอยู่ */}
+      {/* ลิสต์แสดงห้องที่ผู้ใช้เป็นสมาชิก */}
+
       <FlatList
         data={rooms}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          // เมื่อกดที่ห้อง จะส่งข้อมูลห้องผ่านพารามิเตอร์ไปที่หน้า [roomId].js
+          // กดที่การ์ดเพื่อนำทางไปหน้ารายละเอียดห้อง และส่งพารามิเตอร์ไปใช้งาน
           <TouchableOpacity
             style={styles.roomCard}
             onPress={() =>
               router.push({
-                pathname: `/${item.id}`,
-                params: { roomName: item.name, roomCode: item.room_code },
+                pathname: "/[roomId]",
+                params: {
+                  roomId: item.id,
+                  roomName: item.name,
+                  roomCode: item.room_code,
+                },
               })
             }
           >
@@ -97,7 +153,7 @@ export default function RoomScreen() {
         )}
       />
 
-      {/* ปุ่มออกจากระบบ */}
+      {/* ปุ่มออกจากระบบ สำหรับกลับไปสู่หน้าลงชื่อเข้าใช้ */}
       <Button title="ออกจากระบบ" onPress={handleLogout} color="red" />
     </View>
   );

@@ -1,3 +1,4 @@
+import { supabase } from "@/services/supabase";
 import { useRouter } from "expo-router"; // ใช้สำหรับเปลี่ยนหน้า
 import React, { useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { supabase } from "../services/supabase";
 
 export default function RegisterScreen() {
   const router = useRouter();

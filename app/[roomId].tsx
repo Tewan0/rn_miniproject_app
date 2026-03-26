@@ -1,5 +1,5 @@
 import { supabase } from "@/services/supabase";
-import { useLocalSearchParams } from "expo-router"; // ใช้รับค่าพารามิเตอร์ใน Expo Router
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Button,
@@ -12,21 +12,21 @@ import {
 } from "react-native";
 
 export default function RoomDetailScreen() {
-  // รับค่า id ของห้อง, ชื่อห้อง, และรหัสเชิญ ที่ส่งมาจากหน้า rooms.js
+  // รับค่าพร้อมบังคับ Type (หลีกเลี่ยง Type Error)
   const { roomId, roomName, roomCode } = useLocalSearchParams<{
     roomId: string;
     roomName: string;
     roomCode: string;
   }>();
 
+  // 1. ระบุ Type เป็น <any[]>
   const [items, setItems] = useState<any[]>([]);
   const [newItemName, setNewItemName] = useState("");
 
   useEffect(() => {
-    fetchItems();
+    if (roomId) fetchItems(); // เช็คว่ามี roomId ก่อนดึงข้อมูล
   }, [roomId]);
 
-  // ดึงรายการของเฉพาะที่อยู่ในห้องนี้
   const fetchItems = async () => {
     const { data, error } = await supabase
       .from("grocery_items")
@@ -37,14 +37,11 @@ export default function RoomDetailScreen() {
     if (!error && data) setItems(data);
   };
 
-  // เพิ่มของชิ้นใหม่ลงห้อง
   const handleAddItem = async () => {
     if (!newItemName) return;
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
-    // เช็คว่ามี user ก่อน insert
     if (!user) return;
 
     const { error } = await supabase
@@ -57,7 +54,7 @@ export default function RoomDetailScreen() {
     }
   };
 
-  // อัปเดตสถานะว่า ซื้อแล้ว หรือ ยังไม่ได้ซื้อ
+  // 2. ระบุ Type ให้ id และ currentStatus เพื่อแก้ Error: Implicit 'any'
   const toggleBoughtStatus = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from("grocery_items")
@@ -68,13 +65,11 @@ export default function RoomDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ส่วนหัวแสดงข้อมูลห้อง */}
       <View style={styles.headerInfo}>
         <Text style={styles.title}>ห้อง: {roomName}</Text>
         <Text>ส่งรหัสนี้ให้เพื่อนเข้าห้อง: {roomCode}</Text>
       </View>
 
-      {/* ช่องสำหรับกรอกและเพิ่มรายการ */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -85,14 +80,12 @@ export default function RoomDetailScreen() {
         <Button title="เพิ่มรายการ" onPress={handleAddItem} />
       </View>
 
-      {/* ลิสต์แสดงรายการของ */}
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()} // แปลงเป็น String กัน Error
         renderItem={({ item }) => (
           <View style={styles.itemCard}>
             <View style={{ flex: 1 }}>
-              {/* ถ้าซื้อแล้วให้ขีดฆ่าชื่อทิ้ง */}
               <Text
                 style={[
                   styles.itemName,
@@ -106,7 +99,6 @@ export default function RoomDetailScreen() {
               </Text>
             </View>
 
-            {/* ปุ่มเปลี่ยนสถานะการซื้อ */}
             <TouchableOpacity
               onPress={() => toggleBoughtStatus(item.id, item.is_bought)}
               style={[
