@@ -13,9 +13,13 @@ import {
 
 export default function RoomDetailScreen() {
   // รับค่า id ของห้อง, ชื่อห้อง, และรหัสเชิญ ที่ส่งมาจากหน้า rooms.js
-  const { roomId, roomName, roomCode } = useLocalSearchParams();
+  const { roomId, roomName, roomCode } = useLocalSearchParams<{
+    roomId: string;
+    roomName: string;
+    roomCode: string;
+  }>();
 
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<any[]>([]);
   const [newItemName, setNewItemName] = useState("");
 
   useEffect(() => {
@@ -27,10 +31,10 @@ export default function RoomDetailScreen() {
     const { data, error } = await supabase
       .from("grocery_items")
       .select("*")
-      .eq("room_id", roomId) // กรองเฉพาะของในห้องนี้
+      .eq("room_id", roomId)
       .order("created_at", { ascending: false });
 
-    if (!error) setItems(data);
+    if (!error && data) setItems(data);
   };
 
   // เพิ่มของชิ้นใหม่ลงห้อง
@@ -40,21 +44,24 @@ export default function RoomDetailScreen() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // เช็คว่ามี user ก่อน insert
+    if (!user) return;
+
     const { error } = await supabase
       .from("grocery_items")
       .insert([{ room_id: roomId, name: newItemName, created_by: user.id }]);
 
     if (!error) {
       setNewItemName("");
-      fetchItems(); // ดึงข้อมูลใหม่มาแสดง
+      fetchItems();
     }
   };
 
   // อัปเดตสถานะว่า ซื้อแล้ว หรือ ยังไม่ได้ซื้อ
-  const toggleBoughtStatus = async (id, currentStatus) => {
+  const toggleBoughtStatus = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from("grocery_items")
-      .update({ is_bought: !currentStatus }) // สลับค่า true / false
+      .update({ is_bought: !currentStatus })
       .eq("id", id);
     if (!error) fetchItems();
   };
