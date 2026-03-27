@@ -33,35 +33,45 @@ export default function RoomScreen() {
 
   // ฟังก์ชันสร้างห้องใหม่
   const handleCreateRoom = async () => {
-    if (!newRoomName) return; // ถ้าไม่ได้กรอกชื่อให้หยุดการทำงาน
-    
-    // ดึงข้อมูลผู้ใช้งานปัจจุบัน
+    if (!newRoomName) return;
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // สร้างรหัสห้องแบบสุ่ม 6 ตัวอักษร
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    // บันทึกห้องใหม่ลงฐานข้อมูล
-    const { error } = await supabase
+    // สร้างห้อง และใช้ .select().single() เพื่อขอข้อมูลห้องที่เพิ่งสร้างกลับมา
+    const { data: newRoom, error: createError } = await supabase
       .from("family_rooms")
-      .insert([
-        { name: newRoomName, room_code: roomCode, creator_id: user.id },
-      ]);
+      .insert([{ name: newRoomName, room_code: roomCode, creator_id: user.id }])
+      .select()
+      .single();
 
-    if (error) Alert.alert("Error", error.message);
-    else {
-      setNewRoomName(""); // ล้างช่องกรอกข้อความ
-      fetchRooms(); // ดึงข้อมูลห้องมาใหม่
+    if (createError) {
+      Alert.alert("เกิดข้อผิดพลาดในการสร้างห้อง", createError.message);
+      return;
+    }
+
+    // นำ ID ห้องที่ได้ มาเพิ่มตัวเองเข้าเป็นสมาชิก (Admin) ของห้องนี้
+    if (newRoom) {
+      const { error: memberError } = await supabase
+        .from("room_members")
+        .insert([{ room_id: newRoom.id, user_id: user.id, role: "admin" }]);
+
+      if (memberError) {
+        Alert.alert("เกิดข้อผิดพลาดในการเพิ่มเข้าห้อง", memberError.message);
+      } else {
+        setNewRoomName(""); // ล้างช่องกรอกข้อความ
+        fetchRooms(); // ดึงข้อมูลห้องมาแสดงใหม่
+      }
     }
   };
 
   // ฟังก์ชันเข้าร่วมห้อง
   const handleJoinRoom = async () => {
     if (!joinCode) return; // ถ้าไม่ได้ระบุรหัสให้หยุดการทำงาน
-    
+
     // ดึงข้อมูลผู้ใช้งานปัจจุบัน
     const {
       data: { user },
