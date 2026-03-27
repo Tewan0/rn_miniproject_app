@@ -80,7 +80,7 @@ export default function Index() {
 
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#FF6B6B" />
-          <Text style={styles.loadingText}>กำลังโหลดข้อมูล...</Text>
+          <Text style={styles.loadingText}>กำลังโหลด...</Text>
         </View>
       </Animated.View>
     </View>

@@ -35,7 +35,7 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert("เข้าสู่ระบบล้มเหลว", error.message);
     } else {
-      router.replace("/rooms"); // ล็อกอินผ่าน ให้ไปหน้า rooms (จะไม่มีปุ่มกลับ)
+      router.replace("/"); // ล็อกอินผ่าน ให้ไปแสดง Splash Screen แอนิเมชันก่อนเข้า rooms
     }
   };
 

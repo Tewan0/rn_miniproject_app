@@ -1,6 +1,7 @@
 import { supabase } from "@/services/supabase";
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -23,27 +23,58 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     const handleUrl = async (url: string | null) => {
       if (!url) return;
-      
-      const fragment = url.split("#")[1];
-      if (fragment) {
-        const params = fragment.split("&").reduce((acc, current) => {
-          const [key, value] = current.split("=");
-          acc[key] = value;
-          return acc;
-        }, {} as Record<string, string>);
-        
-        const access_token = params["access_token"];
-        const refresh_token = params["refresh_token"];
-        
-        if (access_token && refresh_token) {
-          await supabase.auth.setSession({ access_token, refresh_token });
+
+      try {
+        // 1. รองรับ Supabase แบบใหม่ (PKCE Flow) จะได้ URL ที่มี ?code=...
+        if (url.includes("code=")) {
+          const queryString = url.split("?")[1]?.split("#")[0];
+          const params = queryString?.split("&").reduce(
+            (acc, current) => {
+              const [key, value] = current.split("=");
+              acc[key] = value;
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
+
+          if (params?.code) {
+            // ใช้ code แลกเปลี่ยนเป็น Session อัตโนมัติ
+            await supabase.auth.exchangeCodeForSession(params.code);
+            return;
+          }
         }
+
+        // 2. รองรับ Supabase แบบเก่า (Implicit Flow) จะได้ URL ที่มี #access_token=...
+        if (url.includes("access_token=")) {
+          const fragment = url.split("#")[1];
+          if (fragment) {
+            const params = fragment.split("&").reduce(
+              (acc, current) => {
+                const [key, value] = current.split("=");
+                acc[key] = value;
+                return acc;
+              },
+              {} as Record<string, string>,
+            );
+
+            const access_token = params["access_token"];
+            const refresh_token = params["refresh_token"];
+
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({ access_token, refresh_token });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("URL Parsing Error:", error);
       }
     };
 
     Linking.getInitialURL().then(handleUrl);
-    const subscription = Linking.addEventListener("url", (e) => handleUrl(e.url));
-    
+    const subscription = Linking.addEventListener("url", (e) =>
+      handleUrl(e.url),
+    );
+
     return () => subscription.remove();
   }, []);
 
@@ -54,6 +85,22 @@ export default function ResetPasswordScreen() {
     }
 
     setLoading(true);
+
+    // ดักเช็คก่อนว่ามี Session จริงๆ หรือยัง ป้องกัน Error เด้ง
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      setLoading(false);
+      Alert.alert(
+        "ข้อผิดพลาด",
+        "เซสชันหมดอายุหรือไม่ถูกต้อง กรุณากดลิงก์จากอีเมลใหม่อีกครั้ง",
+      );
+      return;
+    }
+
+    // ทำการอัปเดตรหัสผ่าน
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
@@ -67,8 +114,8 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.card}>
@@ -76,7 +123,9 @@ export default function ResetPasswordScreen() {
           <Ionicons name="key" size={40} color="#10B981" />
         </View>
         <Text style={styles.title}>ตั้งรหัสผ่านใหม่</Text>
-        <Text style={styles.subtitle}>กรุณากำหนดรหัสผ่านใหม่ของคุณเพื่อใช้งานต่อ</Text>
+        <Text style={styles.subtitle}>
+          กรุณากำหนดรหัสผ่านใหม่ของคุณเพื่อใช้งานต่อ
+        </Text>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>รหัสผ่านใหม่</Text>
@@ -90,8 +139,8 @@ export default function ResetPasswordScreen() {
           />
         </View>
 
-        <TouchableOpacity 
-          style={styles.primaryButton} 
+        <TouchableOpacity
+          style={styles.primaryButton}
           onPress={handleUpdatePassword}
           disabled={loading}
         >
@@ -102,8 +151,8 @@ export default function ResetPasswordScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => router.replace("/login")}
         >
           <Text style={styles.backButtonText}>กลับไปหน้าล็อกอิน</Text>
@@ -134,7 +183,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 80,
     height: 80,
-    backgroundColor: "#D1FAE5", // Light emerald
+    backgroundColor: "#D1FAE5",
     borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
@@ -175,7 +224,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: "100%",
-    backgroundColor: "#10B981", // Emerald green
+    backgroundColor: "#10B981",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",

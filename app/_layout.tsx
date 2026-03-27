@@ -12,9 +12,13 @@ export default function Layout() {
           title: "ห้องครอบครัวของคุณ",
           headerBackVisible: false,
           headerLeft: () => null,
+          headerTitleAlign: "center",
         }}
       />
-      <Stack.Screen name="[roomId]" options={{ title: "รายการซื้อของ" }} />
+      <Stack.Screen
+        name="[roomId]"
+        options={{ title: "รายการซื้อของ", headerTitleAlign: "center" }}
+      />
       <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
       <Stack.Screen name="reset-password" options={{ headerShown: false }} />
     </Stack>
