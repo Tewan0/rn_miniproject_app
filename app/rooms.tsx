@@ -1,6 +1,6 @@
 import { supabase } from "@/services/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -122,6 +122,15 @@ export default function RoomScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 5, padding: 5 }}>
+              <MaterialCommunityIcons name="logout" size={26} color="#FF6B6B" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       <Text style={styles.pageTitle}>Family Rooms</Text>
 
       {/* กล่องสร้างห้อง */}
@@ -220,10 +229,6 @@ export default function RoomScreen() {
           );
         }}
       />
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>ออกจากระบบ</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -295,12 +300,4 @@ const styles = StyleSheet.create({
   roomCardContent: { flexDirection: "row", alignItems: "center" },
   roomName: { fontSize: 18, fontWeight: "bold", color: "#2D3748" },
   roomRole: { fontSize: 14, color: "#718096", marginTop: 4 },
-  logoutButton: {
-    marginTop: 10,
-    padding: 15,
-    alignItems: "center",
-    borderRadius: 10,
-    backgroundColor: "#FF6B6B",
-  },
-  logoutText: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
 });
