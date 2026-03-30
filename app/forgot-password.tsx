@@ -27,18 +27,24 @@ export default function ForgotPasswordScreen() {
     }
 
     setLoading(true);
-    const redirectUrl = Linking.createURL("/reset-password");
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
-    setLoading(false);
+    try {
+      const redirectUrl = Linking.createURL("/reset-password");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
 
-    if (error) {
-      Alert.alert("เกิดข้อผิดพลาด", error.message);
-    } else {
-      Alert.alert("สำเร็จ", "ลิงก์รีเซ็ตรหัสผ่านถูกส่งแล้ว เช็คอีเมลของคุณ", [
-        { text: "ตกลง", onPress: () => router.back() },
-      ]);
+      if (error) {
+        Alert.alert("เกิดข้อผิดพลาด", error.message);
+      } else {
+        Alert.alert("สำเร็จ", "ลิงก์รีเซ็ตรหัสผ่านถูกส่งแล้ว เช็คอีเมลของคุณ", [
+          { text: "ตกลง", onPress: () => router.back() },
+        ]);
+      }
+    } catch (err: any) {
+      console.error("Reset Password Error:", err);
+      Alert.alert("เกิดข้อผิดพลาด", err?.message || "ไม่สามารถส่งลิงก์ได้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setLoading(false);
     }
   };
 

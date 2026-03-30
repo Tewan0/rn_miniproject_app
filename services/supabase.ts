@@ -14,5 +14,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true, // ระบบรีเฟรช Token อัตโนมัติ
     persistSession: true, // ระบบจดจำการเข้าระบบ
     detectSessionInUrl: false,
+    flowType: 'pkce', // ใช้ PKCE Flow เพื่อให้ deep link บนมือถือทำงานได้ (?code=xxx แทน #access_token=xxx)
   },
 });

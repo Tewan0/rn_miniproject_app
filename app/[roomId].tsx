@@ -117,12 +117,17 @@ export default function RoomDetailScreen() {
     const history = priceHistory[itemName];
     if (!history || history.length === 0) return undefined;
 
+    // ถ้ายังไม่ได้ซื้อ (ไม่มี currentPrice) ให้แสดงราคาล่าสุดจากประวัติ
     if (currentPriceRaw == null) return history[0];
 
-    const currentPrice = Number(currentPriceRaw);
-    const oldPrice = history.find((p) => p !== currentPrice);
+    // ถ้ามีประวัติมากกว่า 1 รายการ ให้เทียบกับราคาครั้งก่อนหน้า (index [1])
+    // เพราะ index [0] คือราคาที่เพิ่งบันทึกไปล่าสุดในรอบนี้เอง
+    if (history.length > 1) {
+      return history[1];
+    }
 
-    return oldPrice;
+    // ถ้ามีแค่ 1 รายการในประวัติ แสดงว่าเป็นการซื้อครั้งแรก
+    return undefined;
   };
 
   const handleAddItem = async () => {
@@ -457,7 +462,7 @@ export default function RoomDetailScreen() {
                               fontWeight: "bold",
                             }}
                           >
-                            👤 ซื้อโดย: {buyerName}
+                            👤 {buyerName}
                           </Text>
                         ) : null}
                       </View>
