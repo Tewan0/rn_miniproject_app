@@ -20,7 +20,7 @@ export default function RoomScreen() {
   const [joinCode, setJoinCode] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ✅ เปลี่ยนจาก useEffect เป็น useFocusEffect
+  // เปลี่ยนจาก useEffect เป็น useFocusEffect
   // เพื่อให้ข้อมูลอัปเดตใหม่ทุกครั้งที่ผู้ใช้เปิดหน้านี้ (เช่น ตอนโดนเตะแล้วกลับมาหน้านี้)
   useFocusEffect(
     useCallback(() => {
@@ -36,7 +36,7 @@ export default function RoomScreen() {
     if (!user) return;
     setCurrentUserId(user.id);
 
-    // 2. ✅ เช็คเฉพาะห้องที่ User คนนี้เป็นสมาชิกอยู่เท่านั้น!
+    // 2. เช็คเฉพาะห้องที่ User คนนี้เป็นสมาชิกอยู่เท่านั้น!
     const { data, error } = await supabase
       .from("room_members")
       .select(
@@ -125,7 +125,10 @@ export default function RoomScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 5, padding: 5 }}>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{ marginRight: 5, padding: 5 }}
+            >
               <MaterialCommunityIcons name="logout" size={26} color="#FF6B6B" />
             </TouchableOpacity>
           ),

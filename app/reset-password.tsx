@@ -2,7 +2,7 @@ import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,25 +22,33 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [codeExchanged, setCodeExchanged] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const processedCodeRef = useRef<string | null>(null);
+
+  const processCode = async (code: string) => {
+    if (!code || processedCodeRef.current === code) return;
+    processedCodeRef.current = code;
+
+    setVerifyingCode(true);
+    console.log("🔗 EXCHANGING CODE FOR SESSION:", code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      console.error("❌ PKCE Exchange Error:", error);
+      Alert.alert("เชื่อมต่อไม่สำเร็จ", error.message);
+    } else {
+      console.log("✅ PKCE Exchange Success — session ready");
+      setSessionReady(true);
+    }
+    setVerifyingCode(false);
+  };
 
   // ===== 1) หลัก: ดึง ?code= จาก Expo Router params (deep link) =====
   useEffect(() => {
-    if (params.code && !codeExchanged) {
-      console.log("🔗 RECEIVED CODE FROM EXPO ROUTER PARAMS:", params.code);
-      setCodeExchanged(true);
-
-      supabase.auth.exchangeCodeForSession(params.code).then(({ error }) => {
-        if (error) {
-          console.error("❌ PKCE Exchange Error:", error);
-          Alert.alert("เชื่อมต่อไม่สำเร็จ", error.message);
-        } else {
-          console.log("✅ PKCE Exchange Success — session ready");
-          setSessionReady(true);
-        }
-      });
+    if (params.code && typeof params.code === "string") {
+      processCode(params.code);
     }
-  }, [params.code, codeExchanged]);
+  }, [params.code]);
 
   // ===== 2) Fallback: ฟัง onAuthStateChange + เช็ค session + Linking =====
   useEffect(() => {
@@ -74,13 +82,7 @@ export default function ResetPasswordScreen() {
         if (url.includes("code=")) {
           const codeMatch = url.match(/code=([^&#]+)/);
           if (codeMatch && codeMatch[1]) {
-            const { error } = await supabase.auth.exchangeCodeForSession(codeMatch[1]);
-            if (error) {
-              console.error("PKCE Exchange Error:", error);
-              Alert.alert("เชื่อมต่อไม่สำเร็จ", error.message);
-            } else {
-              setSessionReady(true);
-            }
+            processCode(codeMatch[1]);
             return;
           }
         }
@@ -165,13 +167,17 @@ export default function ResetPasswordScreen() {
 
         {/* แสดงสถานะ session */}
         <View style={[styles.statusBadge, sessionReady ? styles.statusReady : styles.statusNotReady]}>
-          <Ionicons
-            name={sessionReady ? "checkmark-circle" : "time-outline"}
-            size={18}
-            color={sessionReady ? "#059669" : "#D97706"}
-          />
+          {verifyingCode ? (
+            <ActivityIndicator size="small" color="#D97706" style={{ marginRight: 4 }} />
+          ) : (
+            <Ionicons
+              name={sessionReady ? "checkmark-circle" : "time-outline"}
+              size={18}
+              color={sessionReady ? "#059669" : "#D97706"}
+            />
+          )}
           <Text style={[styles.statusText, sessionReady ? { color: "#059669" } : { color: "#D97706" }]}>
-            {sessionReady ? "พร้อมตั้งรหัสผ่านใหม่" : "กำลังรอเชื่อมต่อ... กรุณากดลิงก์จากอีเมล"}
+            {sessionReady ? "พร้อมตั้งรหัสผ่านใหม่" : verifyingCode ? "กำลังตรวจสอบการเชื่อมต่อ..." : "กำลังรอเชื่อมต่อ... กรุณากดลิงก์จากอีเมล"}
           </Text>
         </View>
 
